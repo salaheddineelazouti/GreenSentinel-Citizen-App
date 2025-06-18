@@ -1,0 +1,15 @@
+{
+  "settings": "Paramètres",
+  "language": "Langue",
+  "theme": "Thème",
+  "deleteAccount": "Supprimer mon compte",
+  "deleteAccountConfirmation": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.",
+  "system": "Système",
+  "light": "Clair",
+  "dark": "Sombre",
+  "french": "Français",
+  "english": "English",
+  "accountDeleted": "Compte supprimé (mock)",
+  "cancel": "Annuler",
+  "delete": "Supprimer"
+}

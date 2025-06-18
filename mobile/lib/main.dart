@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:green_sentinel_mobile/feature/home/home_page.dart';
+import 'package:green_sentinel_mobile/feature/onboarding/onboarding_page.dart';
+import 'package:green_sentinel_mobile/feature/settings/settings_page.dart';
+import 'package:green_sentinel_mobile/local_storage/hive_boxes.dart';
+import 'package:green_sentinel_mobile/services/sync_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'theme.dart';
 
 // Provider to manage theme mode
@@ -61,16 +68,74 @@ final _router = GoRouter(
       path: '/home',
       builder: (context, state) => const HomePage(),
     ),
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const OnboardingPage(),
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsPage(),
+    ),
   ],
 );
+
+/// Background task callback for WorkManager
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      switch (task) {
+        case kSyncReportsTaskName:
+          // Initialize Hive
+          await initHive();
+          
+          // Create repository and flush queue
+          final syncService = SyncService();
+          await syncService.flushQueue();
+          return true;
+        default:
+          return false;
+      }
+    } catch (e) {
+      debugPrint('Background task error: $e');
+      return false;
+    }
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialize Easy Localization
+  await EasyLocalization.ensureInitialized();
+  
+  // Initialize Hive for local storage
+  await initHive();
+  
+  // Initialize WorkManager for background tasks
+  await Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: true,
+  );
+  
+  // Schedule periodic background sync
+  await SyncService.schedulePeriodicSync();
+  
   // Load design tokens before running the app
   await AppTheme().loadTokens();
   
-  runApp(const ProviderScope(child: MyApp()));
+  // Initialize the sync service to listen for connectivity changes
+  final syncService = SyncService();
+  await syncService.initialize();
+  
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('en'), Locale('fr')],
+      path: 'lib/l10n',
+      fallbackLocale: const Locale('en'),
+      child: const ProviderScope(child: MyApp()),
+    ),
+  );
 }
 
 class MyApp extends ConsumerWidget {
@@ -86,6 +151,9 @@ class MyApp extends ConsumerWidget {
       darkTheme: AppTheme().darkTheme,
       themeMode: themeMode,
       routerConfig: _router,
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
     );
   }
 }
@@ -104,11 +172,11 @@ class HomePage extends ConsumerWidget {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GreenSentinel Citizen'),
+        title: Text('GreenSentinel Citizen'.tr()),
         actions: [
           IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: () => ref.read(themeProvider.notifier).toggleTheme(),
+            icon: const Icon(Icons.settings),
+            onPressed: () => context.go('/settings'),
           ),
         ],
       ),

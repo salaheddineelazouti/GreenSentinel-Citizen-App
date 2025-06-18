@@ -1,0 +1,15 @@
+{
+  "settings": "Settings",
+  "language": "Language",
+  "theme": "Theme",
+  "deleteAccount": "Delete account",
+  "deleteAccountConfirmation": "Are you sure you want to delete your account? This action cannot be undone.",
+  "system": "System",
+  "light": "Light",
+  "dark": "Dark",
+  "french": "Français",
+  "english": "English",
+  "accountDeleted": "Account deleted (mock)",
+  "cancel": "Cancel",
+  "delete": "Delete"
+}
