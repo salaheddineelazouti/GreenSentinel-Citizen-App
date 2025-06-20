@@ -1,0 +1,60 @@
+version: "3.9"
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: greensentinel
+      POSTGRES_USER: gs_user
+      POSTGRES_PASSWORD: gs_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:RELEASE.2024-06-05T17-12-01Z
+    command: server /data --console-address ":9090"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"   # API S3
+      - "9090:9090"   # Console UI
+    volumes:
+      - minio_data:/data
+      
+  vision:
+    build:
+      context: ../vision_service
+    image: greensentinel/vision:latest
+    depends_on:
+      - minio
+    environment:
+      - MODEL_VARIANT=fire
+    ports:
+      - "9001:9001"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbit
+      RABBITMQ_DEFAULT_PASS: rabbit
+
+  worker:
+    build:
+      context: ./worker_service
+    image: greensentinel/worker:latest
+    depends_on:
+      - rabbitmq
+      - db
+    environment:
+      - RABBITMQ_URL=amqp://rabbit:rabbit@rabbitmq:5672/
+      - DATABASE_URL=${DB_URL}
+
+volumes:
+  postgres_data:
+  minio_data:
