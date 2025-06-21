@@ -22,7 +22,7 @@ const manifest = self.__WB_MANIFEST
 precacheAndRoute(manifest)
 
 // Gestion spécifique de la page d'index pour la SPA
-const handler = createHandlerBoundToURL('/index.html')
+const handler = createHandlerBoundToURL('index.html') // Remove leading slash for relative path
 const navigationRoute = new NavigationRoute(handler, {
   // Exclusion des routes API et WebSocket
   denylist: [/\/api\/.*/, /\/ws\/.*/],
@@ -41,6 +41,20 @@ registerRoute(
       new ExpirationPlugin({
         maxEntries: 60,
         maxAgeSeconds: 30 * 24 * 60 * 60, // 30 jours
+      }),
+    ],
+  }),
+)
+
+// Stratégie spécifique pour les icônes du manifeste (très important pour la PWA)
+registerRoute(
+  ({ url }) => url.pathname.includes('/icons/'),
+  new CacheFirst({
+    cacheName: 'icon-resources',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 20,
+        maxAgeSeconds: 60 * 24 * 60 * 60, // 60 jours, plus long pour les icônes
       }),
     ],
   }),

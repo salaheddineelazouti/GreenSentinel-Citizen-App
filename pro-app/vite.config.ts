@@ -13,13 +13,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',  // Changed from autoUpdate to prompt for more reliability
       injectRegister: 'auto',
-      srcDir: 'public',
-      filename: 'firebase-messaging-sw.js',
-      includeAssets: ['favicon.svg', 'robots.txt', 'icons/*.png', 'assets/*'],
-      // Configuration du Service Worker pour Firebase Messaging
-      strategies: 'generateSW',
+      srcDir: 'src',          // Changed from public to src where sw.ts exists
+      filename: 'sw.ts',      // Using our custom service worker instead of Firebase one
+      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'icons/*.svg', 'assets/*'],
+      // Configuration du Service Worker
+      strategies: 'injectManifest', // Changed to injectManifest to use our custom sw.ts
       devOptions: {
         enabled: true,
         type: 'module',
@@ -27,7 +27,7 @@ export default defineConfig({
       // Options pour optimiser l'expérience PWA
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg}'],
-        navigateFallback: null,
+        navigateFallback: 'index.html', // Set explicit fallback to index.html instead of null
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
@@ -66,8 +66,38 @@ export default defineConfig({
         ],
         icons: [
           {
+            src: 'icons/icon-72x72.png',
+            sizes: '72x72',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icons/icon-96x96.png',
+            sizes: '96x96',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icons/icon-128x128.png',
+            sizes: '128x128',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icons/icon-144x144.png',
+            sizes: '144x144',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
             src: 'icons/icon-192x192.png',
             sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icons/icon-384x384.png',
+            sizes: '384x384',
             type: 'image/png',
             purpose: 'any'
           },

@@ -74,7 +74,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const apiHost = import.meta.env.VITE_API_HOST || 'http://localhost:8000';
-      const response = await axios.post(`${apiHost}/login`, { email, password });
+      console.log('Tentative de connexion à:', `${apiHost}/api/v1/auth/login`);
+      console.log('Données envoyées:', { email, password });
+      
+      const response = await axios.post(`${apiHost}/api/v1/auth/login`, { email, password });
+      console.log('Auth response:', response.data);
       
       const { access_token } = response.data;
       
@@ -87,6 +91,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return false;
     } catch (error) {
       console.error('Login error:', error);
+      if (axios.isAxiosError(error)) {
+        console.log('Détails erreur Axios:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          headers: error.response?.headers
+        });
+      }
       return false;
     }
   };

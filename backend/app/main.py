@@ -38,7 +38,7 @@ def create_application() -> FastAPI:
     # Add CORS middleware
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3001", "http://localhost:3000", "https://admin.greensentinel.dev"],
+        allow_origins=["http://localhost:3001", "http://localhost:3000", "http://localhost:5173", "https://admin.greensentinel.dev"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
