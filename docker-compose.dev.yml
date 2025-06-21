@@ -1,0 +1,188 @@
+# Development environment configuration
+# Use with: make dev
+
+services:
+  # Database (extends prod)
+  db:
+    extends:
+      file: docker-compose.yml
+      service: db
+    env_file:
+      - .env.dev
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    profiles: ["dev"]
+
+  # MinIO (extends prod)
+  minio:
+    extends:
+      file: docker-compose.yml
+      service: minio
+    env_file:
+      - .env.dev
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    profiles: ["dev"]
+
+  # RabbitMQ (extends prod)
+  rabbitmq:
+    extends:
+      file: docker-compose.yml
+      service: rabbitmq
+    env_file:
+      - .env.dev
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    profiles: ["dev"]
+
+  # Backend API (FastAPI) - development mode
+  backend:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    build: 
+      context: ./backend
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env.dev
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    profiles: ["dev"]
+
+  # Computer Vision Service - development mode
+  vision:
+    extends:
+      file: docker-compose.yml
+      service: vision
+    build: 
+      context: ./vision_service
+    volumes:
+      - ./vision_service:/app
+      - vision_models:/app/models
+    env_file:
+      - .env.dev
+    environment:
+      - PYTORCH_ENABLE_MPS_FALLBACK=1
+    profiles: ["dev"]
+
+  # Worker Service - development mode
+  worker:
+    extends:
+      file: docker-compose.yml
+      service: worker
+    build:
+      context: ./backend/worker_service
+    volumes:
+      - ./backend/worker_service:/app
+    env_file:
+      - .env.dev
+    profiles: ["dev"]
+
+  # Admin App (Next.js) - development mode
+  admin-app:
+    extends:
+      file: docker-compose.yml
+      service: admin-app
+    build:
+      context: ./admin-app
+      dockerfile: Dockerfile.dev
+    command: npm run dev
+    volumes:
+      - ./admin-app:/app
+      - /app/node_modules
+    env_file:
+      - .env.dev
+    ports:
+      - "${ADMIN_APP_PORT:-3000}:3000"
+    profiles: ["dev"]
+
+  # Pro App (Vite) - development mode
+  pro-app:
+    extends:
+      file: docker-compose.yml
+      service: pro-app
+    build:
+      context: ./pro-app
+      dockerfile: Dockerfile.dev
+    command: npm run dev
+    volumes:
+      - ./pro-app:/app
+      - /app/node_modules
+    env_file:
+      - .env.dev
+    ports:
+      - "${PRO_APP_PORT:-5173}:5173"
+    profiles: ["dev"]
+
+  # Traefik is replaced by direct port exposure in dev mode
+  # We'll use a local mkcert setup for HTTPS in dev if needed
+
+  # Prometheus - development mode
+  prometheus:
+    extends:
+      file: docker-compose.yml
+      service: prometheus
+    ports:
+      - "9090:9090"
+    env_file:
+      - .env.dev
+    profiles: ["dev"]
+
+  # Grafana - development mode
+  grafana:
+    extends:
+      file: docker-compose.yml
+      service: grafana
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env.dev
+    profiles: ["dev"]
+
+  # Loki - development mode
+  loki:
+    extends:
+      file: docker-compose.yml
+      service: loki
+    ports:
+      - "3100:3100"
+    env_file:
+      - .env.dev
+    profiles: ["dev"]
+
+  # Promtail - development mode
+  promtail:
+    extends:
+      file: docker-compose.yml
+      service: promtail
+    env_file:
+      - .env.dev
+    profiles: ["dev"]
+
+  # cAdvisor - development mode
+  cadvisor:
+    extends:
+      file: docker-compose.yml
+      service: cadvisor
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.dev
+    profiles: ["dev"]
+
+volumes:
+  vision_models:
+  minio_data:
+  db_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  greensentinel_net:
+    driver: bridge

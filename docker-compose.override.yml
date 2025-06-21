@@ -1,0 +1,17 @@
+services:
+  db:
+    platform: linux/amd64
+    image: postgis/postgis:14-3.3
+  minio:
+    platform: linux/amd64
+    image: bitnami/minio:latest
+    volumes:
+      - ./minio_data:/data
+    environment:
+      - MINIO_DEFAULT_BUCKETS=greensentinel:public
+  rabbitmq:
+    platform: linux/amd64
+    image: rabbitmq:3-management
+  backend:
+    ports:
+      - "8000:8000"

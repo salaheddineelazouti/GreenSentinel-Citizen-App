@@ -13,7 +13,7 @@ export interface LoginResponse {
  * Login function - sends credentials to API and stores JWT token in cookie
  */
 export const login = async (email: string, password: string): Promise<string> => {
-  const response = await fetch(`${API_BASE}/login`, {
+  const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

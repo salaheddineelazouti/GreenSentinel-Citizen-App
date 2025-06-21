@@ -1,15 +1,23 @@
-from typing import List
+import csv
+import io
+import tempfile
+from datetime import date
+from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import StreamingResponse
 from geoalchemy2.functions import ST_SetSRID, ST_MakePoint
-from sqlalchemy import select
+import aiofiles.tempfile
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.models import Incident
+from app.core.models import Incident, User
 from app.core.schemas import IncidentIn, IncidentOut
+from app.core.security import get_admin_user
 
-router = APIRouter(prefix="/incidents", tags=["Incidents"])
+router = APIRouter(tags=["Incidents"])
 
 
 @router.get("", response_model=List[IncidentOut])
@@ -104,3 +112,91 @@ async def create_incident(
         "lat": lat,
         "lon": lon
     }
+
+
+@router.get("/export", tags=["Incidents"])
+async def export_incidents(
+    format: Annotated[str, Query(regex="^(csv|json)$")],
+    current_user: Annotated[User, Depends(get_admin_user)],
+    from_: Optional[date] = Query(None, alias="from"),
+    to: Optional[date] = None,
+    state: Optional[List[str]] = Query(None),
+    session: AsyncSession = Depends(get_db),
+):
+    """
+    Stream incidents as CSV or JSON according to filters.
+    """
+    # Build query with filters
+    query = select(Incident).order_by(Incident.created_at.desc())
+    
+    # Apply date filters if provided
+    if from_:
+        query = query.where(Incident.created_at >= from_)
+    if to:
+        query = query.where(Incident.created_at <= to)
+    
+    # Apply state filter if provided
+    if state and len(state) > 0:
+        query = query.where(Incident.type.in_(state))
+    
+    # Execute query
+    result = await session.execute(query)
+    incidents = result.scalars().all()
+    
+    # Format date for filename
+    today_str = date.today().strftime("%Y%m%d")
+    
+    # Convert the PostGIS geometry to lat/lon for each incident
+    incidents_out = []
+    for incident in incidents:
+        lat, lon = incident.get_lat_lon()
+        incident_dict = {
+            "id": incident.id,
+            "type": incident.type,
+            "severity": incident.severity,
+            "description": incident.description,
+            "created_at": incident.created_at.isoformat(),
+            "reporter_id": incident.reporter_id,
+            "lat": lat,
+            "lon": lon
+        }
+        incidents_out.append(incident_dict)
+    
+    if format == "json":
+        # Return JSON directly
+        json_content = jsonable_encoder(incidents_out)
+        return StreamingResponse(
+            content=io.BytesIO(str(json_content).encode("utf-8")),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=\"incidents_{today_str}.json\""
+            },
+        )
+    else:  # CSV format
+        # Create a temporary file to write CSV data
+        async with aiofiles.tempfile.NamedTemporaryFile("w+", delete=False) as temp_file:
+            # Create CSV writer
+            # We need to create a StringIO buffer since csv.writer requires a text file-like object
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=["id", "type", "severity", "description", "created_at", "reporter_id", "lat", "lon"])
+            
+            # Write header and data
+            writer.writeheader()
+            for incident in incidents_out:
+                writer.writerow(incident)
+            
+            # Get the CSV content from the StringIO buffer
+            csv_content = output.getvalue()
+            
+            # Write CSV content to the temporary file
+            await temp_file.write(csv_content)
+            await temp_file.flush()
+        
+        # Create a streaming response with the CSV file
+        return StreamingResponse(
+            content=io.BytesIO(csv_content.encode("utf-8")),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=\"incidents_{today_str}.csv\""
+            },
+        )

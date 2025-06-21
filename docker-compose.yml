@@ -1,0 +1,331 @@
+# Default profile is "prod" (production)
+# Use "make dev" for development with hot-reload
+# Includes monitoring stack: Prometheus, Loki, Grafana, cAdvisor, and Promtail
+
+services:
+  # Database
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    env_file:
+      - .env.prod
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-greensentinel}
+    networks:
+      - greensentinel_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+
+  # MinIO Object Storage (S3 compatible)
+  minio:
+    image: minio/minio:latest
+    volumes:
+      - minio_data:/data
+    env_file:
+      - .env.prod
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    networks:
+      - greensentinel_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=Host(`s3.greensentinel.local`)"
+      - "traefik.http.services.minio.loadbalancer.server.port=9000"
+      - "traefik.http.routers.minio.entrypoints=websecure"
+      - "traefik.http.routers.minio.tls.certresolver=greensentinelresolver"
+      - "traefik.http.routers.minio-console.rule=Host(`s3-console.greensentinel.local`)"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+      - "traefik.http.routers.minio-console.entrypoints=websecure"
+      - "traefik.http.routers.minio-console.tls.certresolver=greensentinelresolver"
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    env_file:
+      - .env.prod
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-guest}
+    networks:
+      - greensentinel_net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq.rule=Host(`queue.greensentinel.local`)"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
+      - "traefik.http.routers.rabbitmq.entrypoints=websecure"
+      - "traefik.http.routers.rabbitmq.tls.certresolver=greensentinelresolver"
+
+  # Backend API (FastAPI)
+  backend:
+    build: 
+      context: ./backend
+    image: greensentinel/backend:latest
+    env_file:
+      - .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.greensentinel.local`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=greensentinelresolver"
+  
+  # Computer Vision Service (YOLOv8)
+  vision:
+    build: 
+      context: ./vision_service
+    image: greensentinel/vision:latest
+    env_file:
+      - .env.prod
+    depends_on:
+      - rabbitmq
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+  
+  # Worker Service (RabbitMQ consumer + FCM)
+  worker:
+    build: 
+      context: ./backend/worker_service
+    image: greensentinel/worker:latest
+    env_file:
+      - .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+
+  # Admin App (Next.js)
+  admin-app:
+    build: 
+      context: ./admin-app
+    image: greensentinel/admin-app:latest
+    env_file:
+      - .env.prod
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin-app.rule=Host(`dashboard.greensentinel.local`)"
+      - "traefik.http.services.admin-app.loadbalancer.server.port=3000"
+      - "traefik.http.routers.admin-app.entrypoints=websecure"
+      - "traefik.http.routers.admin-app.tls.certresolver=greensentinelresolver"
+
+  # Pro App (React + Vite)
+  pro-app:
+    build: 
+      context: ./pro-app
+    image: greensentinel/pro-app:latest
+    env_file:
+      - .env.prod
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pro-app.rule=Host(`pro.greensentinel.local`)"
+      - "traefik.http.services.pro-app.loadbalancer.server.port=5173"
+      - "traefik.http.routers.pro-app.entrypoints=websecure"
+      - "traefik.http.routers.pro-app.tls.certresolver=greensentinelresolver"
+  
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v3.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certs:/etc/traefik/acme
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.greensentinelresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.greensentinelresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.greensentinelresolver.acme.email=${TRAEFIK_ACME_EMAIL:-admin@greensentinel.local}"
+      - "--certificatesresolvers.greensentinelresolver.acme.storage=/etc/traefik/acme/acme.json"
+      # Enable dashboard in production with secure access
+      - "--api.dashboard=true"
+    env_file:
+      - .env.prod
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_HTTPS_PORT:-443}:443"
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod"]
+    labels:
+      - "traefik.enable=true"
+      # Redirect HTTP to HTTPS
+      - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      # Dashboard access
+      - "traefik.http.routers.traefik.rule=Host(`traefik.greensentinel.local`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=greensentinelresolver"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_AUTH_USER:-admin}:${TRAEFIK_AUTH_PASSWORD_HASH:-$2y$05$eKux3xydI1DwnZdv/P6kmuO0QT24nVTB3MUNRJUepK2CQI94HDE1C}" # Default: admin/admin
+
+  # Prometheus Metrics Server
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`metrics.greensentinel.local`)"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=greensentinelresolver"
+      - "traefik.http.routers.prometheus.middlewares=prometheus-auth"
+      - "traefik.http.middlewares.prometheus-auth.basicauth.users=${TRAEFIK_AUTH_USER:-admin}:${TRAEFIK_AUTH_PASSWORD_HASH:-$2y$05$eKux3xydI1DwnZdv/P6kmuO0QT24nVTB3MUNRJUepK2CQI94HDE1C}"
+
+  # Grafana Visualization
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    env_file:
+      - .env.prod
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+    profiles: ["prod", "dev"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.greensentinel.local`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=greensentinelresolver"
+
+  # Loki Log Aggregation
+  loki:
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki:/etc/loki
+      - loki_data:/loki
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+
+  # Promtail Log Collection
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - ./promtail:/etc/promtail
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    depends_on:
+      - loki
+
+  # cAdvisor Container Metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - greensentinel_net
+    restart: unless-stopped
+    profiles: ["prod", "dev"]
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cadvisor.rule=Host(`cadvisor.greensentinel.local`)"
+      - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
+      - "traefik.http.routers.cadvisor.entrypoints=websecure"
+      - "traefik.http.routers.cadvisor.tls.certresolver=greensentinelresolver"
+      - "traefik.http.routers.cadvisor.middlewares=cadvisor-auth"
+      - "traefik.http.middlewares.cadvisor-auth.basicauth.users=${TRAEFIK_AUTH_USER:-admin}:${TRAEFIK_AUTH_PASSWORD_HASH:-$2y$05$eKux3xydI1DwnZdv/P6kmuO0QT24nVTB3MUNRJUepK2CQI94HDE1C}"
+
+networks:
+  greensentinel_net:
+    driver: bridge
+
+volumes:
+  db_data:
+  minio_data:
+  rabbitmq_data:
+  traefik_certs:
+  prometheus_data:
+  grafana_data:
+  loki_data:

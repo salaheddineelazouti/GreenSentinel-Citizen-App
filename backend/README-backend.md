@@ -148,6 +148,80 @@ poetry run pytest
   - `api/` - API routes organized by version
   - `core/` - Core utilities (security, models)
 - `tests/` - Test suite
+- `scripts/` - Utility scripts
+  - `seed_demo.py` - Generates demo data (users, incidents)
+
+## Run with Make
+
+You can start the entire stack including the monitoring system with:
+
+```bash
+make dev
+```
+
+This will start all services defined in docker-compose.yml and docker-compose.dev.yml.
+
+## Monitoring & Observability
+
+The backend is instrumented with Prometheus metrics, exposed at the `/metrics` endpoint (not included in OpenAPI schema). This provides:
+
+- HTTP request count
+- Request duration histograms
+- Response status codes
+- Custom business metrics
+
+### Accessing Monitoring
+
+- **Grafana**: http://localhost:3001 (admin/admin in dev)
+- **Prometheus**: http://localhost:9090
+- **Loki** (logs): Available through Grafana's Explore section
+
+### Adding Custom Metrics
+
+To add custom business metrics to your route handlers:
+
+```python
+from prometheus_client import Counter, Histogram
+
+# Create metric
+INCIDENT_REPORTS = Counter('incident_reports_total', 'Number of incident reports', ['status'])
+
+# Use in endpoint
+@router.post("/")
+async def create_incident(incident: IncidentCreate):
+    # Your logic here
+    INCIDENT_REPORTS.labels(status="received").inc()
+    return {"id": new_incident.id}
+```
+
+See `docs/monitoring.md` for more detailed information on the monitoring stack.
+
+## Demo Data
+
+The project includes a demo data seeding script that creates:
+
+- 3 demo users (citizen, firefighter, admin)
+- 8 demo incidents with various statuses and types
+
+You can seed demo data using one of the following methods:
+
+```bash
+# Using the Makefile (requires running stack)
+make seed
+
+# Using the demo.sh script (launches stack + seeds data)
+./demo.sh dev
+```
+
+Demo users have the following credentials:
+
+| Email | Password | Role |
+|-------|----------|------|
+| citizen@greensentinel.org | citizen123 | CITIZEN |
+| firefighter@greensentinel.org | firefighter123 | FIREFIGHTER |
+| admin@greensentinel.org | admin123 | ADMIN |
+
+See `docs/deployment.md` for more details about the demo script capabilities.
 
 ## Architecture événementielle
 
@@ -238,3 +312,42 @@ Build and run with Docker:
 docker build -t greensentinel-api .
 docker run -p 8000:8000 greensentinel-api
 ```
+
+## Run with Make
+
+For a more complete deployment with all services, you can use the Makefile commands at the project root:
+
+### Development Mode
+
+```bash
+# From the project root directory (one level up)
+make dev
+```
+
+This starts all services in development mode with:
+- Hot-reload for code changes
+- Volume mounts for local development
+- Exposed ports for direct access
+- Environment variables from .env.dev
+
+### Production Mode
+
+```bash
+# From the project root directory (one level up)
+make prod
+```
+
+This starts all services in production mode with:
+- Traefik reverse proxy for HTTPS
+- Let's Encrypt certificates
+- Subdomain routing (api.greensentinel.local, etc.)
+- Environment variables from .env.prod
+
+### Stop All Services
+
+```bash
+# From the project root directory
+make down
+```
+
+Refer to the main deployment documentation in `docs/deployment.md` for more details.

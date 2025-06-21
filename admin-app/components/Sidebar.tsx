@@ -21,10 +21,11 @@ import {
 import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
-import { FiAlertCircle, FiBarChart2, FiUsers, FiMenu } from 'react-icons/fi';
+import { FiAlertCircle, FiBarChart2, FiUsers, FiMenu, FiMap, FiActivity } from 'react-icons/fi';
+import { IconType } from 'react-icons';
 
 interface NavItemProps extends BoxProps {
-  icon: ReactNode;
+  icon: IconType;
   children: ReactNode;
   href: string;
   isActive?: boolean;
@@ -101,11 +102,17 @@ export const SidebarContent = ({ onClose, ...props }: SidebarProps & BoxProps) =
         <NavItem icon={FiAlertCircle} href="/dashboard/incidents" isActive={pathname === '/dashboard/incidents'}>
           Incidents
         </NavItem>
+        <NavItem icon={FiMap} href="/dashboard/map" isActive={pathname === '/dashboard/map'}>
+          Carte globale
+        </NavItem>
         <NavItem icon={FiBarChart2} href="/dashboard/stats" isActive={pathname === '/dashboard/stats'}>
-          Statistics
+          Statistiques
         </NavItem>
         <NavItem icon={FiUsers} href="/dashboard/users" isActive={pathname === '/dashboard/users'}>
-          Users
+          Utilisateurs
+        </NavItem>
+        <NavItem icon={FiActivity} href="/dashboard/diagnostic" isActive={pathname === '/dashboard/diagnostic'}>
+          Diagnostic
         </NavItem>
       </VStack>
     </Box>

@@ -12,6 +12,8 @@ import {
   Text,
   Button,
   Avatar,
+  Badge,
+  Tooltip,
   useColorMode,
   useColorModeValue,
   useBreakpointValue,
@@ -20,17 +22,48 @@ import { SunIcon, MoonIcon } from '@chakra-ui/icons';
 import { Sidebar } from '@/components/Sidebar';
 import { logout } from '@/lib/auth';
 import { useEffect, useState } from 'react';
+import { getIncidentWebSocket } from '@/lib/ws';
+import { isClient } from '@/lib/utils';
+import { FiMapPin } from 'react-icons/fi';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { colorMode, toggleColorMode } = useColorMode();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const [adminName, setAdminName] = useState('Admin User');
+  const [incidentCount, setIncidentCount] = useState(0);
 
   // In a real app, you would fetch the admin name from the API
   useEffect(() => {
     // Mock getting admin name - in real app, this would fetch from API
     // using the auth token to get current user details
     setAdminName('Admin User');
+  }, []);
+  
+  // Connect to WebSocket for real-time incident count updates
+  useEffect(() => {
+    if (!isClient) return;
+
+    const ws = getIncidentWebSocket();
+    if (!ws) return;
+    
+    // Connect to WebSocket
+    ws.connect();
+
+    // Listen for new incidents
+    const handleCreate = (event: any) => {
+      setIncidentCount(prev => prev + 1);
+    };
+
+    // Register event handlers
+    ws.on('create', handleCreate);
+
+    return () => {
+      // Clean up event listeners when component unmounts
+      if (ws) {
+        ws.off('create', handleCreate);
+        // Don't disconnect as other components might be using the WebSocket
+      }
+    };
   }, []);
 
   return (
@@ -62,6 +95,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </HStack>
             
             <HStack spacing="4">
+              <Box position="relative" display="flex" alignItems="center">
+                <Tooltip label="Incidents en direct">
+                  <Box>
+                    <IconButton
+                      aria-label="Incidents Map"
+                      variant="ghost"
+                      size="md"
+                      fontSize="lg"
+                      icon={<FiMapPin />}
+                      as="a"
+                      href="/dashboard/map"
+                    />
+                    {incidentCount > 0 && (
+                      <Badge
+                        position="absolute"
+                        top="0"
+                        right="0"
+                        transform="translate(30%, -30%)"
+                        colorScheme="red"
+                        borderRadius="full"
+                        fontSize="xs"
+                      >
+                        {incidentCount}
+                      </Badge>
+                    )}
+                  </Box>
+                </Tooltip>
+              </Box>
+              
               <IconButton
                 aria-label={`Switch to ${colorMode === 'light' ? 'dark' : 'light'} mode`}
                 variant="ghost"

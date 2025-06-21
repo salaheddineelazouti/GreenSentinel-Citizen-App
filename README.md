@@ -1,5 +1,9 @@
 # GreenSentinel Citizen App
 
+[![CI](https://github.com/salaheddineelazouti/GreenSentinel-Citizen-App/actions/workflows/ci.yml/badge.svg)](https://github.com/salaheddineelazouti/GreenSentinel-Citizen-App/actions/workflows/ci.yml)
+[![Release](https://github.com/salaheddineelazouti/GreenSentinel-Citizen-App/actions/workflows/release.yml/badge.svg)](https://github.com/salaheddineelazouti/GreenSentinel-Citizen-App/actions/workflows/release.yml)
+[![Deploy](https://github.com/salaheddineelazouti/GreenSentinel-Citizen-App/actions/workflows/deploy.yml/badge.svg)](https://github.com/salaheddineelazouti/GreenSentinel-Citizen-App/actions/workflows/deploy.yml)
+
 Application mobile et web permettant aux citoyens de signaler et suivre des problèmes environnementaux dans leur région.
 
 ## À propos du projet
@@ -40,6 +44,27 @@ npm start
 ## Design System
 
 L'application utilise un système de design documenté dans [design-system.md](design-system.md) et implémenté avec des tokens de design dans [design-tokens.json](design-tokens.json).
+
+## 📚 Documentation
+
+### Guides d'utilisation
+- [Guide utilisateur Citoyen](docs/user-guide/citizen_app.md) - Application mobile et Web pour signaler des incidents
+- [Guide utilisateur Professionnel](docs/user-guide/pro_app.md) - Application pour pompiers et intervenants
+- [Guide administrateur](docs/user-guide/admin_dashboard.md) - Dashboard de gestion et supervision
+
+### Déploiement & Architecture
+- [Guide de déploiement](docs/deployment.md) - Instructions pour déployer la stack
+- [Monitoring et observabilité](docs/monitoring.md) - Prometheus, Grafana et Loki
+
+### Confidentialité & Sécurité
+- [RGPD One-Pager](docs/privacy/rgpd_onepager.md) - Conformité et traitement des données
+- [Mesures de sécurité](docs/privacy/security_measures.md) - Protection technique des données
+
+### Génération de PDF
+Pour générer des versions PDF de la documentation :
+```bash
+make docs  # Nécessite pandoc et wkhtmltopdf
+```
 
 ## Statut du projet
 

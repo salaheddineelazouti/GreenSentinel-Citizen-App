@@ -20,8 +20,11 @@ minio = "^7.2.5"
 python-multipart = "^0.0.9"
 openai = "^1.30.0"
 aio_pika = "^9.3.1"
-pydantic-msgspec = "^0.5.4"
+msgspec = "^0.18.6"
 fastapi-websocket-pubsub = "^0.2.0"
+aiofiles = "^23.2"
+aiohttp = "^3.9.0"
+prometheus-fastapi-instrumentator = "^6.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.1"

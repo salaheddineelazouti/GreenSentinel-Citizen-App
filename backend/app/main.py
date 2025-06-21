@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.api.v1.endpoints import auth, health, incidents, alerts, websocket_incidents
+from app.api.v1.endpoints import auth, health, incidents, alerts, websocket_incidents, users
 from app.config import settings
 
 
@@ -33,11 +35,21 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
     
+    # Add CORS middleware
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3001", "http://localhost:3000", "https://admin.greensentinel.dev"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     # Include API v1 router
     application.include_router(health.router)
     application.include_router(auth.router, prefix=settings.api_v1_prefix)
     application.include_router(incidents.router, prefix=settings.api_v1_prefix + "/incidents")
     application.include_router(alerts.router, prefix=settings.api_v1_prefix + "/alerts")
+    application.include_router(users.router, prefix=settings.api_v1_prefix + "/users")
     # Include WebSocket router with empty prefix to make it available at /ws/incidents
     application.include_router(websocket_incidents.router, prefix="")
     
@@ -45,3 +57,6 @@ def create_application() -> FastAPI:
 
 
 app = create_application()
+
+# Setup Prometheus instrumentation
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
