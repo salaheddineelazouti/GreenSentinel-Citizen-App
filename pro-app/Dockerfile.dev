@@ -6,14 +6,25 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies avec une version spécifique d'esbuild
 RUN npm install --legacy-peer-deps
+# Supprimer complètement esbuild s'il existe
+RUN npm rm esbuild
+# Nettoyer le cache npm pour éviter les conflits
+RUN npm cache clean --force
+# Installer la version spécifique d'esbuild
+RUN npm install --save-exact esbuild@0.21.5
+# Vérifier la version installée
+RUN npx esbuild --version
 
 # Copy source code
 COPY . .
 
 # Expose port
 EXPOSE 5173
+
+# Définir une variable d'environnement pour s'assurer que la bonne version est utilisée
+ENV ESBUILD_BINARY_PATH=/app/node_modules/esbuild/bin/esbuild
 
 # Start development server
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

@@ -94,7 +94,7 @@ services:
       minio:
         condition: service_healthy
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
     networks:
       - greensentinel_net
     restart: unless-stopped
@@ -131,7 +131,7 @@ services:
       db:
         condition: service_healthy
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
     networks:
       - greensentinel_net
     restart: unless-stopped
@@ -159,7 +159,7 @@ services:
   pro-app:
     build: 
       context: ./pro-app
-    image: greensentinel/pro-app:latest
+    image: greensentinel/pro-app:dev
     env_file:
       - .env.prod
     networks:

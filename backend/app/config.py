@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     
     
     # Database
-    db_url: str = "postgresql+asyncpg://postgres:postgres@db:5432/greensentinel"
+    # db_url: str = "postgresql+asyncpg://postgres:postgres@db:5432/greensentinel"  # PostgreSQL (Docker)
+    db_url: str = "sqlite+aiosqlite:///./greensentinel.db"  # SQLite local (development)
     
     # Vision service settings
     vision_url: HttpUrl = Field(
