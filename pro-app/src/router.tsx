@@ -2,9 +2,10 @@ import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import LoginPage from './pages/LoginPage';
+import IncidentsPage from './pages/IncidentsPage';
 
-// Chargement paresseux des pages privées pour optimiser les performances
-const IncidentsPage = lazy(() => import('./pages/IncidentsPage'));
+// Chargement paresseux des autres pages privées pour optimiser les performances
+// IncidentsPage est importé directement pour éviter les problèmes de lazy loading
 const IncidentDetailPage = lazy(() => import('./pages/IncidentDetailPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const MapPage = lazy(() => import('./pages/MapPage'));

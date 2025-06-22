@@ -10,7 +10,18 @@ interface IncidentCardProps {
 const IncidentCard: React.FC<IncidentCardProps> = ({ incident }) => {
   // Formater la date pour l'affichage
   const formatDate = (dateStr: string) => {
+    if (!dateStr) {
+      return 'Date inconnue';
+    }
+    
     const date = new Date(dateStr);
+    
+    // Vérifier si la date est valide
+    if (isNaN(date.getTime())) {
+      console.warn('Date invalide reçue:', dateStr);
+      return 'Date invalide';
+    }
+    
     return new Intl.DateTimeFormat('fr-FR', {
       day: '2-digit',
       month: '2-digit',

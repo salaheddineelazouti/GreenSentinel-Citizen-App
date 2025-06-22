@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 
@@ -8,18 +8,27 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
   
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, getToken } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    return <Navigate to="/incidents" replace />;
-  }
+  // Vérifie si l'utilisateur est déjà authentifié
+  useEffect(() => {
+    const token = getToken();
+    console.log('🔐 LoginPage - Vérification du token:', token ? 'Token présent' : 'Pas de token');
+    
+    if (isAuthenticated || loginSuccess) {
+      console.log('🔐 LoginPage - Utilisateur authentifié, redirection vers /incidents');
+      // Redirection programmatique pour éviter les problèmes de navigation
+      navigate('/incidents', { replace: true });
+    }
+  }, [isAuthenticated, loginSuccess, navigate, getToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoginSuccess(false);
 
     // Basic validation
     if (!email || !password) {
@@ -35,13 +44,22 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
+      console.log('🔐 LoginPage - Tentative de connexion...');
       const success = await login(email, password);
+      
       if (success) {
-        navigate('/incidents');
+        console.log('🔐 LoginPage - Connexion réussie!');
+        const token = getToken();
+        console.log('🔐 LoginPage - Token après connexion:', token ? 'Présent' : 'Absent');
+        
+        // Marquer le succès et attendre le useEffect pour la redirection
+        setLoginSuccess(true);
       } else {
+        console.log('🔐 LoginPage - Échec de connexion');
         setError('Email ou mot de passe incorrect');
       }
-    } catch {
+    } catch (error) {
+      console.error('🔐 LoginPage - Erreur de connexion:', error);
       setError('Erreur de connexion. Veuillez réessayer.');
     } finally {
       setIsLoading(false);

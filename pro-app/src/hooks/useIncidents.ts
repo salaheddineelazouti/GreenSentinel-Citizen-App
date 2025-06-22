@@ -72,7 +72,10 @@ export const useIncidents = (options: UseIncidentsOptions = {}) => {
 
   const connect = () => {
     // Récupérer l'hôte API depuis les variables d'environnement ou localStorage
-    const apiHost = localStorage.getItem('apiHost') || import.meta.env.VITE_API_HOST || 'localhost:8000';
+    let apiHost = localStorage.getItem('apiHost') || import.meta.env.VITE_API_HOST || 'localhost:8000';
+    
+    // Supprimer tout préfixe http:// ou https:// de l'apiHost
+    apiHost = apiHost.replace(/^(https?:\/\/|http\/\/)/i, '');
     
     // Use the forced protocol in tests or determine it from window.location
     const protocol = options.forceProtocol || (window.location.protocol === 'https:' ? 'wss:' : 'ws:');

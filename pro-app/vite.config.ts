@@ -13,13 +13,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',  // Changed from autoUpdate to prompt for more reliability
+      registerType: 'autoUpdate',  // Utiliser autoUpdate pour une meilleure expérience
       injectRegister: 'auto',
-      srcDir: 'src',          // Changed from public to src where sw.ts exists
-      filename: 'sw.ts',      // Using our custom service worker instead of Firebase one
+      // En mode développement, utiliser le service worker généré automatiquement au lieu d'un fichier personnalisé
+      // pour éviter les erreurs d'évaluation du script
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'icons/*.svg', 'assets/*'],
       // Configuration du Service Worker
-      strategies: 'injectManifest', // Changed to injectManifest to use our custom sw.ts
+      strategies: 'generateSW', // Utiliser generateSW en développement pour éviter les erreurs
       devOptions: {
         enabled: true,
         type: 'module',
@@ -65,59 +65,18 @@ export default defineConfig({
           }
         ],
         icons: [
+          // Utilisation des nouvelles icônes SVG qui remplacent les PNG corrompus
           {
-            src: 'icons/icon-72x72.png',
-            sizes: '72x72',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'icons/icon-96x96.png',
-            sizes: '96x96',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'icons/icon-128x128.png',
-            sizes: '128x128',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'icons/icon-144x144.png',
-            sizes: '144x144',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'icons/icon-192x192.png',
+            src: 'icons/icon-192x192.svg',
             sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any'
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           },
           {
-            src: 'icons/icon-384x384.png',
-            sizes: '384x384',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'icons/icon-512x512.png',
+            src: 'icons/icon-512x512.svg',
             sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'icons/icon-maskable-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'maskable'
-          },
-          {
-            src: 'icons/icon-maskable-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           }
         ]
       }

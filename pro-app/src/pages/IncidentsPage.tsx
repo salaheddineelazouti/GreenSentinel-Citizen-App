@@ -4,7 +4,16 @@ import { useIncidents } from '../hooks/useIncidents';
 import IncidentCard from '../components/IncidentCard';
 
 const IncidentsPage: React.FC = () => {
+  console.log('IncidentsPage: Rendu initial');
   const { incidents, status, isLoading, error, refetch } = useIncidents();
+  
+  console.log('IncidentsPage: État actuel', { 
+    incidents: incidents.length, 
+    status, 
+    isLoading, 
+    error, 
+    connected: status === 'connected' 
+  });
 
   return (
     <div className="container-app py-6">

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <!-- Fond vert -->
+  <rect width="192" height="192" rx="38" fill="#4CAF50"/>
+  
+  <!-- Flamme au milieu -->
+  <path d="M96 38C96 38 112 56 112 75C112 94 101 101 96 101C91 101 80 94 80 75C80 56 96 38 96 38Z" fill="#FF5722"/>
+  <path d="M96 45C96 45 109 60 109 75C109 90 101 98 96 98C91 98 83 90 83 75C83 60 96 45 96 45Z" fill="#FFEB3B"/>
+  
+  <!-- Texte "GS" -->
+  <text x="96" y="135" font-family="Arial" font-size="45" font-weight="bold" text-anchor="middle" fill="white">GS</text>
+  
+  <!-- Cercle de notification (OPTIONNEL) -->
+  <circle cx="142" cy="49" r="15" fill="#E53935"/>
+  <text x="142" y="54" font-family="Arial" font-size="15" font-weight="bold" text-anchor="middle" fill="white">!</text>
+</svg>
