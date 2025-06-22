@@ -25,7 +25,15 @@ type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
 // Fonction factory pour WebSocket, permet de faciliter les tests
 export const createWebSocket = (url: string): WebSocket => {
-  return new WebSocket(url);
+  console.log('Création WebSocket avec URL:', url);
+  try {
+    const socket = new WebSocket(url);
+    console.log('Objet WebSocket créé avec succès');
+    return socket;
+  } catch (e) {
+    console.error('Erreur lors de la création du WebSocket:', e);
+    throw e;
+  }
 };
 
 // Optional parameters for testing
@@ -74,27 +82,40 @@ export const useIncidents = (options: UseIncidentsOptions = {}) => {
     // Récupérer l'hôte API depuis les variables d'environnement ou localStorage
     let apiHost = localStorage.getItem('apiHost') || import.meta.env.VITE_API_HOST || 'localhost:8000';
     
+    console.log('VITE_API_HOST:', import.meta.env.VITE_API_HOST);
+    console.log('localStorage apiHost:', localStorage.getItem('apiHost'));
+    console.log('apiHost utilisé:', apiHost);
+    
     // Supprimer tout préfixe http:// ou https:// de l'apiHost
     apiHost = apiHost.replace(/^(https?:\/\/|http\/\/)/i, '');
+    console.log('apiHost après nettoyage:', apiHost);
     
     // Use the forced protocol in tests or determine it from window.location
     const protocol = options.forceProtocol || (window.location.protocol === 'https:' ? 'wss:' : 'ws:');
+    console.log('protocole WebSocket utilisé:', protocol);
+    
     const wsUrl = `${protocol}//${apiHost}/ws/incidents`;
+    console.log('URL WebSocket complète:', wsUrl);
     
     setStatus('connecting');
+    console.log('Tentative de connexion WebSocket...');
     
     // Fermer la connexion précédente si elle existe
     if (ws.current) {
+      console.log('Fermeture de la connexion WebSocket existante');
       ws.current.close();
     }
     
-    const socket = createWebSocket(wsUrl);
-    
-    socket.onopen = () => {
-      console.log('WebSocket connecté');
-      setStatus('connected');
-      reconnectAttempts.current = 0;
-    };
+    try {
+      console.log('Création du WebSocket:', wsUrl);
+      const socket = createWebSocket(wsUrl);
+      console.log('WebSocket créé avec succès, en attente de connexion...');
+      
+      socket.onopen = () => {
+        console.log('WebSocket connecté avec succès!');
+        setStatus('connected');
+        reconnectAttempts.current = 0;
+      };
     
     socket.onmessage = (event) => {
       try {
@@ -114,16 +135,16 @@ export const useIncidents = (options: UseIncidentsOptions = {}) => {
       }
     };
     
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       setStatus('disconnected');
-      console.log('WebSocket déconnecté');
+      console.log('WebSocket déconnecté avec code:', event.code, 'raison:', event.reason);
       
       // Reconnexion avec backoff exponentiel
       const reconnectDelay = Math.min(1000 * (2 ** reconnectAttempts.current), 30000);
       reconnectAttempts.current += 1;
       
       if (reconnectAttempts.current <= maxReconnectAttempts) {
-        console.log(`Tentative de reconnexion dans ${reconnectDelay}ms...`);
+        console.log(`Tentative de reconnexion dans ${reconnectDelay}ms... (${reconnectAttempts.current}/${maxReconnectAttempts})`);
         setTimeout(connect, reconnectDelay);
       } else {
         console.error('Nombre maximum de tentatives de reconnexion atteint');
@@ -131,11 +152,16 @@ export const useIncidents = (options: UseIncidentsOptions = {}) => {
     };
     
     socket.onerror = (error) => {
-      console.error('Erreur WebSocket:', error);
-      socket.close();
+      console.error('Erreur WebSocket détectée:', error);
+      console.log('Détail de l\'erreur WebSocket (si disponible):', JSON.stringify(error));
     };
     
     ws.current = socket;
+    } catch (error) {
+      console.error('Exception lors de la création du WebSocket:', error);
+      // Simuler un délai puis tenter une reconnexion
+      setTimeout(connect, 5000);
+    }
   };
 
   // Mettre à jour l'état d'un incident dans la liste locale
@@ -162,13 +188,21 @@ export const useIncidents = (options: UseIncidentsOptions = {}) => {
   };
 
   useEffect(() => {
+    console.log('Hook useIncidents activé');
     // Fetch initial data then connect to WebSocket
+    console.log('Récupération des incidents initiaux...');
     fetchIncidents().then(() => {
+      console.log('Incidents récupérés, initialisation de la connexion WebSocket...');
+      connect();
+    }).catch((error) => {
+      console.error('Erreur lors de la récupération des incidents initiaux:', error);
+      // Tenter de connecter le WebSocket même en cas d'échec de fetch
       connect();
     });
     
     // Listen for incident state updates via custom events
     const handleIncidentAction = (event: CustomEvent<IncidentAction>) => {
+      console.log('Action incident reçue:', event.detail);
       processAction(event.detail);
     };
 
